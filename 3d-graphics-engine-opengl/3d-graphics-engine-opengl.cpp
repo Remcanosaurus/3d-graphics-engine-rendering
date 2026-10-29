@@ -353,7 +353,7 @@ int main(int argc, char* args[])
             glUseProgram(programID);
 
             // Bereken matrices van input
-            computeMatricesFromInputs();
+            computeMatricesFromInputs((float)kScreenWidth / kScreenHeight);
             glm::mat4 ProjectionMatrix = getProjectionMatrix();
             glm::mat4 ViewMatrix = getViewMatrix();
             glm::mat4 ModelMatrix = glm::mat4(1.0);

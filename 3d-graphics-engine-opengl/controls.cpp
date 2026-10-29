@@ -20,9 +20,10 @@ glm::mat4 getProjectionMatrix() {
 
 // Beginpositie van de camera
 glm::vec3 position = glm::vec3(0, 0, 5);
-// Camera front en up vectors
+// Camera front, right en up vectors
 glm::vec3 front;
 glm::vec3 up;
+glm::vec3 right;
 // Beginhoek horizontaal : naar -Z
 float horizontalAngle = 3.14f;
 // Beginhoek verticaal : none
@@ -34,7 +35,7 @@ float speed = 3.0f; // 3 /s
 float lookSpeed = 1.5f;
 
 
-void computeMatricesFromInputs() {
+void computeMatricesFromInputs(float aspect) {
 
 	static double lastTime = (double)SDL_GetPerformanceCounter() / (double)SDL_GetPerformanceFrequency();
 
@@ -70,7 +71,7 @@ void computeMatricesFromInputs() {
 		cos(verticalAngle) * cos(horizontalAngle)
 	};
 
-	glm::vec3 right = glm::vec3(
+	right = glm::vec3(
 		sin(horizontalAngle - 3.14f / 2.0f),
 		0,
 		cos(horizontalAngle - 3.14f / 2.0f)
@@ -96,7 +97,7 @@ void computeMatricesFromInputs() {
 	float FoV = initialFoV;// - 5 * someSDLscrollwheelFunction();
 
 	// Projection matrix : FOV, 4:3 ratio, range : 0.1 unit <-> 100 units
-	ProjectionMatrix = glm::perspective(glm::radians(FoV), 4.0f / 3.0f, 0.1f, 100.0f);
+	ProjectionMatrix = glm::perspective(glm::radians(FoV), aspect, 0.1f, 100.0f);
 	// Camera matrix
 	ViewMatrix = glm::lookAt(
 		position,           // Camera is hier
@@ -117,4 +118,8 @@ glm::vec3 getCameraFront() {
 
 glm::vec3 getCameraUp() {
 	return up;
+}
+
+glm::vec3 getCameraRight() {
+	return right;
 }

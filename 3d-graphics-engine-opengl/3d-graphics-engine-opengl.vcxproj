@@ -166,6 +166,7 @@
   <ItemGroup>
     <ClCompile Include="3d-graphics-engine-opengl.cpp" />
     <ClCompile Include="controls.cpp" />
+    <ClCompile Include="frustum_culing.cpp" />
     <ClCompile Include="obj_loader.cpp" />
     <ClCompile Include="shader_loader.cpp" />
   </ItemGroup>
