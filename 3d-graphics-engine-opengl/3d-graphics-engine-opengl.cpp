@@ -26,11 +26,11 @@ SDL_Window* gWindow{ nullptr };
 SDL_GLContext glContext;
 
 // Lichtbron
-constexpr Light light{
-    glm::vec3{ 5.0f, 4.0f, 5.0f }, // positie
+Light light{
+    glm::vec3{ 3.0f, 1.0f, 3.0f }, // positie
     glm::vec3{ 0.5f, 0.5f, 0.5f }, // la
-    glm::vec3{ 0.5f, 0.5f, 0.5f }, // ld
-    glm::vec3{ 0.5f, 0.5f, 0.5f }  // ls
+    glm::vec3{ 0.8f, 0.8f, 0.8f }, // ld
+    glm::vec3{ 0.8f, 0.8f, 0.8f }  // ls
 };
 
 bool init()
@@ -78,6 +78,11 @@ bool init()
             // Z-buffer
             glEnable(GL_DEPTH_TEST);
             glDepthFunc(GL_LESS);
+
+            // Culling
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_BACK);
+
         }
     }
 
@@ -106,10 +111,7 @@ int main(int argc, char* args[])
     std::string filePath; // Pad naar OBJ bestand uit command line argument halen
     if (argc > 1) filePath = args[1];
     else {
-        std::cout << "Geen OBJ bestand opgegeven via command line arguments.\n";
-        std::cout << "Druk op een toets om af te sluiten.\n";
-        system("pause");
-        return 1;
+        filePath = baseDir.string() + "/cube.obj";
     }
 
     std::string fileName = std::filesystem::path(filePath).filename().string();
@@ -136,7 +138,7 @@ int main(int argc, char* args[])
         SDL_Event e;
         SDL_zero(e);
 
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClearColor(0.5f, 0.5f, 0.9f, 1.0f);
 
         // Maak de VAO aan
         GLuint vertexArrayID;
@@ -462,6 +464,8 @@ int main(int argc, char* args[])
 
             // Swap buffer naar scherm
             SDL_GL_SwapWindow(gWindow);
+
+            light.light_position = camPos;
         }
     }
 

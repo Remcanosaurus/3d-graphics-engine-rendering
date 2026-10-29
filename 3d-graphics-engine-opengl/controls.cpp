@@ -20,6 +20,9 @@ glm::mat4 getProjectionMatrix() {
 
 // Beginpositie van de camera
 glm::vec3 position = glm::vec3(0, 0, 5);
+// Camera front en up vectors
+glm::vec3 front;
+glm::vec3 up;
 // Beginhoek horizontaal : naar -Z
 float horizontalAngle = 3.14f;
 // Beginhoek verticaal : none
@@ -61,11 +64,11 @@ void computeMatricesFromInputs() {
 	}
 
 	// Richting berekenen
-	glm::vec3 direction(
+	front = {
 		cos(verticalAngle) * sin(horizontalAngle),
 		sin(verticalAngle),
 		cos(verticalAngle) * cos(horizontalAngle)
-	);
+	};
 
 	glm::vec3 right = glm::vec3(
 		sin(horizontalAngle - 3.14f / 2.0f),
@@ -73,14 +76,14 @@ void computeMatricesFromInputs() {
 		cos(horizontalAngle - 3.14f / 2.0f)
 	);
 
-	glm::vec3 up = glm::cross(right, direction);
+	up = glm::cross(right, front);
 
 	// WASD voor beweging
 	if (keyState[SDL_SCANCODE_W]) {
-		position += direction * deltaTime * speed;
+		position += front * deltaTime * speed;
 	}
 	if (keyState[SDL_SCANCODE_S]) {
-		position -= direction * deltaTime * speed;
+		position -= front * deltaTime * speed;
 	}
 	if (keyState[SDL_SCANCODE_D]) {
 		position += right * deltaTime * speed;
@@ -97,7 +100,7 @@ void computeMatricesFromInputs() {
 	// Camera matrix
 	ViewMatrix = glm::lookAt(
 		position,           // Camera is hier
-		position + direction, // kijkt hiernaartoe
+		position + front, // kijkt hiernaartoe
 		up                  // Head is omhoog
 	);
 
@@ -106,4 +109,12 @@ void computeMatricesFromInputs() {
 
 glm::vec3 getCameraPosition() {
 	return position;
+}
+
+glm::vec3 getCameraFront() {
+	return front;
+}
+
+glm::vec3 getCameraUp() {
+	return up;
 }
