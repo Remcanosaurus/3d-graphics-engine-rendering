@@ -16,6 +16,7 @@
 #include "obj_loader.h"
 #include "controls.h"
 #include "light.h"
+#include "frustum_culling.h"
 
 constexpr int kScreenWidth{ 640 };
 constexpr int kScreenHeight{ 480 };
@@ -32,6 +33,10 @@ Light light{
     glm::vec3{ 0.8f, 0.8f, 0.8f }, // ld
     glm::vec3{ 0.8f, 0.8f, 0.8f }  // ls
 };
+
+Frustum cameraFrustum;
+float cameraNearPlane{ 0.1f };
+float cameraFarPlane{ 100.0f };
 
 bool init()
 {
@@ -353,10 +358,19 @@ int main(int argc, char* args[])
             glUseProgram(programID);
 
             // Bereken matrices van input
-            computeMatricesFromInputs((float)kScreenWidth / kScreenHeight);
+            computeMatricesFromInputs((float)kScreenWidth / kScreenHeight, cameraNearPlane, cameraFarPlane);
             glm::mat4 ProjectionMatrix = getProjectionMatrix();
             glm::mat4 ViewMatrix = getViewMatrix();
             glm::mat4 ModelMatrix = glm::mat4(1.0);
+
+            AABB objectBounds = calculateWorldAABB(objData.vertices, ModelMatrix);
+            cameraFrustum = calculateCameraFrustum(getCameraPosition(), getCameraFront(), getCameraRight(), getCameraUp(), kScreenWidth/kScreenHeight, getFOV(), cameraNearPlane, cameraFarPlane);
+
+            if (!cameraFrustum.isInsideFrustum(objectBounds))
+            {
+                SDL_GL_SwapWindow(gWindow);
+                continue;
+            }
 
             // Upload matrices naar shader
             if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(ProjectionMatrix));

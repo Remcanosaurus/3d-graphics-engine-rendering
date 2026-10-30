@@ -35,7 +35,7 @@ float speed = 3.0f; // 3 /s
 float lookSpeed = 1.5f;
 
 
-void computeMatricesFromInputs(float aspect) {
+void computeMatricesFromInputs(float aspect, float near, float far) {
 
 	static double lastTime = (double)SDL_GetPerformanceCounter() / (double)SDL_GetPerformanceFrequency();
 
@@ -97,7 +97,7 @@ void computeMatricesFromInputs(float aspect) {
 	float FoV = initialFoV;// - 5 * someSDLscrollwheelFunction();
 
 	// Projection matrix : FOV, 4:3 ratio, range : 0.1 unit <-> 100 units
-	ProjectionMatrix = glm::perspective(glm::radians(FoV), aspect, 0.1f, 100.0f);
+	ProjectionMatrix = glm::perspective(glm::radians(FoV), aspect, near, far);
 	// Camera matrix
 	ViewMatrix = glm::lookAt(
 		position,           // Camera is hier
@@ -122,4 +122,8 @@ glm::vec3 getCameraUp() {
 
 glm::vec3 getCameraRight() {
 	return right;
+}
+
+float getFOV() {
+	return initialFoV;
 }
