@@ -131,7 +131,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\remco\source\repos\3d-graphics-engine-rendering\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -167,6 +167,7 @@
     <ClCompile Include="3d-graphics-engine-opengl.cpp" />
     <ClCompile Include="controls.cpp" />
     <ClCompile Include="frustum_culing.cpp" />
+    <ClCompile Include="object.cpp" />
     <ClCompile Include="obj_loader.cpp" />
     <ClCompile Include="shader_loader.cpp" />
   </ItemGroup>
@@ -181,6 +182,7 @@
     <ClInclude Include="controls.h" />
     <ClInclude Include="frustum_culling.h" />
     <ClInclude Include="light.h" />
+    <ClInclude Include="object.h" />
     <ClInclude Include="obj_loader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

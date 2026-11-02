@@ -27,6 +27,12 @@
     <ClCompile Include="controls.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="frustum_culing.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="object.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Image Include="test.bmp">
@@ -48,6 +54,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="frustum_culling.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="object.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
