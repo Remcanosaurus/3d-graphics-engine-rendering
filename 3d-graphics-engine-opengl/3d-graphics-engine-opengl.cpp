@@ -31,8 +31,8 @@ SDL_GLContext glContext;
 Light light{
     glm::vec3{ 3.0f, 1.0f, 3.0f }, // positie
     glm::vec3{ 0.5f, 0.5f, 0.5f }, // la
-    glm::vec3{ 0.8f, 0.8f, 0.8f }, // ld
-    glm::vec3{ 0.8f, 0.8f, 0.8f }  // ls
+    glm::vec3{ 0.9f, 0.9f, 0.9f }, // ld
+    glm::vec3{ 1.0f, 1.0f, 1.0f }  // ls
 };
 
 Frustum cameraFrustum;
@@ -135,8 +135,16 @@ int main(int argc, char* args[])
         ObjData objData = loadObjFile(filePath);
         calculateTangents(objData);
 
-		objects.push_back(Object(objData));
-		generateMeshesFromObject(objects.back());
+        for (int x = 0; x < 3; ++x)
+		{
+			for (int z = 0; z < 3; ++z)
+			{
+				Object object{ objData };
+				generateMeshesFromObject(object);
+				object.setPosition(glm::vec3{ static_cast<float>(x) * 4.0f, 0.0f, static_cast<float>(z) * 4.0f });
+				objects.push_back(object);
+			}
+		}
 
         bool quit{ false };
 

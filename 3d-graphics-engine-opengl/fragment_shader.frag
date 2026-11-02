@@ -99,10 +99,12 @@ void main(){
     }
 
     vec3 is = ks * ls * spec;
+
+    float attenuation = 1.0 / (1.0 + 0.02 * distance(lpos, FragPos) + 0.01 * pow(distance(lpos, FragPos), 2.0));
     
     vec3 ambient = texColor * ia;
-    vec3 diffuse = texColor * id;
-    vec3 specular = is;
+    vec3 diffuse = texColor * id * attenuation;
+    vec3 specular = is * attenuation;
 
     color = ambient + diffuse + specular;
 }

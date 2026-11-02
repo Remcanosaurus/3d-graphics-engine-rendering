@@ -258,7 +258,7 @@ void generateMeshesFromObject(Object& object)
             mesh.ka = materials[m].ambientColor;
             mesh.kd = materials[m].diffuseColor;
             mesh.ks = materials[m].specularColor;
-            mesh.ns = materials[m].shininess;
+            mesh.ns = materials[m].shininess > 0.0f ? materials[m].shininess : 32.0f;
         }
         else
         {
