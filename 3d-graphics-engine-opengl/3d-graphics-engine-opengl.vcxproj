@@ -167,6 +167,7 @@
     <ClCompile Include="3d-graphics-engine-opengl.cpp" />
     <ClCompile Include="controls.cpp" />
     <ClCompile Include="frustum_culing.cpp" />
+    <ClCompile Include="lod.cpp" />
     <ClCompile Include="object.cpp" />
     <ClCompile Include="obj_loader.cpp" />
     <ClCompile Include="shader_loader.cpp" />
@@ -182,6 +183,7 @@
     <ClInclude Include="controls.h" />
     <ClInclude Include="frustum_culling.h" />
     <ClInclude Include="light.h" />
+    <ClInclude Include="lod.h" />
     <ClInclude Include="object.h" />
     <ClInclude Include="obj_loader.h" />
   </ItemGroup>

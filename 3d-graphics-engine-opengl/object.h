@@ -36,6 +36,13 @@ public:
 	void draw() const;
 };
 
+class LODMesh
+{
+public:
+	std::vector<Mesh> meshes;
+	float screenSizeThreshold{ 0.0f };
+};
+
 class Object
 {
 public:
@@ -51,7 +58,7 @@ public:
 	void setScale(const glm::vec3& s) { scale = s; matrixDirty = true; }
 
 	ObjData objData;
-	std::vector<Mesh> meshes;
+	std::vector<LODMesh> lodMeshes;
 
 	void update();
 

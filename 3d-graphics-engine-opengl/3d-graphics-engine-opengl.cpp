@@ -134,7 +134,6 @@ int main(int argc, char* args[])
         // Laad OBJ file
         ObjData objData = loadObjFile(filePath);
         calculateTangents(objData);
-
         for (int x = 0; x < 3; ++x)
 		{
 			for (int z = 0; z < 3; ++z)
