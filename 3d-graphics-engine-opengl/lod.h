@@ -31,3 +31,5 @@ struct SimObject
 SimObject createSimObject(const ObjData& objData);
 
 SimObject simplifyObject(SimObject simObject, float targetReduction);
+
+ObjData convertSimObjectToObjData(const SimObject& simObject, const ObjData& originalData);

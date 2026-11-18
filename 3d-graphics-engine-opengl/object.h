@@ -39,6 +39,8 @@ public:
 class LODMesh
 {
 public:
+	LODMesh(std::vector<Mesh> meshes, float screenSizeThreshold);
+
 	std::vector<Mesh> meshes;
 	float screenSizeThreshold{ 0.0f };
 };
@@ -71,4 +73,4 @@ private:
 	glm::mat4 modelMatrix{ 1.0f };
 };
 
-void generateMeshesFromObject(Object& object);
+std::vector<Mesh> generateMeshesFromObject(ObjData objData);

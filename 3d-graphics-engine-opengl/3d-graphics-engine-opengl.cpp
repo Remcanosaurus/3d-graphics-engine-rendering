@@ -133,13 +133,14 @@ int main(int argc, char* args[])
     {
         // Laad OBJ file
         ObjData objData = loadObjFile(filePath);
+		std::cout << "Aantal vertices: " << objData.vertices.size() << "\n";
         calculateTangents(objData);
-        for (int x = 0; x < 3; ++x)
+        for (int x = 0; x < 1; ++x)
 		{
-			for (int z = 0; z < 3; ++z)
+			for (int z = 0; z < 1; ++z)
 			{
+				std::cout << "Creating object at position (" << x << ", " << z << ")\n";
 				Object object{ objData };
-				generateMeshesFromObject(object);
 				object.setPosition(glm::vec3{ static_cast<float>(x) * 4.0f, 0.0f, static_cast<float>(z) * 4.0f });
 				objects.push_back(object);
 			}
@@ -240,7 +241,9 @@ int main(int argc, char* args[])
                 // Upload model matrix naar shader
                 if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(ModelMatrix));
 
-                for (const Mesh& mesh : object.meshes)
+				std::vector<Mesh> meshes = object.lodMeshes[1].meshes;
+
+                for (const Mesh& mesh : meshes)
                 {
 					glActiveTexture(GL_TEXTURE0);
                     glBindTexture(GL_TEXTURE_2D, mesh.diffuseTexture);

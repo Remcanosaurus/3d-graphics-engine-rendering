@@ -1,6 +1,7 @@
 #include "lod.h"
 #include<algorithm>
 #include <queue>
+#include <iostream>
 
 SimObject createSimObject(const ObjData& objData)
 {
@@ -66,12 +67,59 @@ bool edgeComparator(const SimEdge& a, const SimEdge& b)
 	return a.error > b.error;
 }
 
+void rebuildConnectivity(SimObject& simObject)
+{
+	for (SimVertex& vertex : simObject.vertices)
+	{
+		vertex.connectedFaces.clear();
+		vertex.connectedVertices.clear();
+	}
+
+	for (size_t faceIndex = 0; faceIndex < simObject.faces.size(); ++faceIndex)
+	{
+		const ObjFace& face = simObject.faces[faceIndex];
+		if (face.vertexIndices.size() < 3)
+			continue;
+
+		for (size_t i = 0; i < 3; ++i)
+		{
+			int current = face.vertexIndices[i];
+			int next = face.vertexIndices[(i + 1) % 3];
+			int previous = face.vertexIndices[(i + 2) % 3];
+
+			if (current < 0 || next < 0 || previous < 0 ||
+				current >= static_cast<int>(simObject.vertices.size()) ||
+				next >= static_cast<int>(simObject.vertices.size()) ||
+				previous >= static_cast<int>(simObject.vertices.size()))
+			{
+				continue;
+			}
+
+			simObject.vertices[current].connectedFaces.push_back(static_cast<int>(faceIndex));
+			simObject.vertices[current].connectedVertices.push_back(next);
+			simObject.vertices[current].connectedVertices.push_back(previous);
+		}
+	}
+
+	for (SimVertex& vertex : simObject.vertices)
+	{
+		std::sort(vertex.connectedVertices.begin(), vertex.connectedVertices.end());
+		vertex.connectedVertices.erase(std::unique(vertex.connectedVertices.begin(), vertex.connectedVertices.end()), vertex.connectedVertices.end());
+
+		std::sort(vertex.connectedFaces.begin(), vertex.connectedFaces.end());
+		vertex.connectedFaces.erase(std::unique(vertex.connectedFaces.begin(), vertex.connectedFaces.end()), vertex.connectedFaces.end());
+	}
+}
+
 SimObject simplifyObject(SimObject simObject, float targetReduction)
 {
 	size_t targetFaceCount = static_cast<size_t>(simObject.faces.size() * (1.0f - targetReduction));
 
 	while (simObject.faces.size() > targetFaceCount)
 	{
+		std::cout << "Current face count: " << simObject.faces.size() << ", target: " << targetFaceCount << "\n";
+		rebuildConnectivity(simObject);
+
 		std::priority_queue<SimEdge, std::vector<SimEdge>, decltype(&edgeComparator)> edges(edgeComparator);
 		for (uint32_t i = 0; i < simObject.vertices.size(); ++i)
 		{
@@ -119,34 +167,106 @@ SimObject simplifyObject(SimObject simObject, float targetReduction)
 
 				edges.emplace(edge);
 			}
+		}
 
-			if (edges.empty())
-				break;
+		if (edges.empty())
+			break;
 
-			SimEdge bestEdge = edges.top();
+		SimEdge bestEdge = edges.top();
 
-			SimVertex& v1 = simObject.vertices[bestEdge.v1];
-			SimVertex& v2 = simObject.vertices[bestEdge.v2];
+		SimVertex& v1 = simObject.vertices[bestEdge.v1];
+		SimVertex& v2 = simObject.vertices[bestEdge.v2];
 
-			v1.position = bestEdge.optimalPosition;
-			v1.quadric += v2.quadric;
+		v1.position = bestEdge.optimalPosition;
+		v1.quadric += v2.quadric;
 
-			for (int faceIndex : v2.connectedFaces)
+		for (int faceIndex : v2.connectedFaces)
+		{
+			ObjFace& face = simObject.faces[faceIndex];
+			for (int& vertexIndex : face.vertexIndices)
 			{
-				ObjFace& face = simObject.faces[faceIndex];
-				for (int& vertexIndex : face.vertexIndices)
-				{
-					if (vertexIndex == bestEdge.v2)
-						vertexIndex = bestEdge.v1;
-				}
+				if (vertexIndex == bestEdge.v2)
+					vertexIndex = bestEdge.v1;
 			}
+		}
 
-			simObject.faces.erase(std::remove_if(simObject.faces.begin(), simObject.faces.end(), [&](const ObjFace& face) {
-				return face.vertexIndices[0] == face.vertexIndices[1] ||
+		simObject.faces.erase(std::remove_if(simObject.faces.begin(), simObject.faces.end(), [&](const ObjFace& face) {
+			return face.vertexIndices[0] == face.vertexIndices[1] ||
 				face.vertexIndices[1] == face.vertexIndices[2] ||
 				face.vertexIndices[2] == face.vertexIndices[0]; }), simObject.faces.end());
 
-			v2.deleted = true;
+		v2.deleted = true;
+		rebuildConnectivity(simObject);
+	}
+
+	return simObject;
+}
+
+ObjData convertSimObjectToObjData(const SimObject& simObj, const ObjData& originalTemplate)
+{
+	ObjData newObjData;
+	newObjData.materials = originalTemplate.materials;
+
+	std::vector<int> oldToNew(simObj.vertices.size(), -1);
+	int newIndex = 0;
+
+	for (size_t i = 0; i < simObj.vertices.size(); ++i)
+	{
+		if (!simObj.vertices[i].deleted)
+		{
+			oldToNew[i] = newIndex++;
+			newObjData.vertices.push_back(simObj.vertices[i].position);
 		}
 	}
+	newObjData.textureCoords = originalTemplate.textureCoords;
+	newObjData.normals.resize(newObjData.vertices.size(), glm::vec3(0.0f));
+
+	for (const auto& face : simObj.faces)
+	{
+		int v0 = oldToNew[face.vertexIndices[0]];
+		int v1 = oldToNew[face.vertexIndices[1]];
+		int v2 = oldToNew[face.vertexIndices[2]];
+
+		if (v0 == -1 || v1 == -1 || v2 == -1 || v0 == v1 || v1 == v2 || v2 == v0)
+			continue;
+
+		ObjFace newFace;
+
+		newFace.vertexIndices = { v0, v1, v2 };
+		newFace.materialIndex = face.materialIndex;
+
+		if (!originalTemplate.textureCoords.empty() && !face.textureCoordIndices.empty() && face.textureCoordIndices.size() >= 3)
+		{
+			newFace.textureCoordIndices = {face.textureCoordIndices[0], face.textureCoordIndices[1], face.textureCoordIndices[2]};
+		}
+		newFace.normalIndices = { v0, v1, v2 };
+
+		newObjData.faces.push_back(newFace);
+	}
+
+	for (const auto& face : newObjData.faces)
+	{
+		glm::vec3 p0 = newObjData.vertices[face.vertexIndices[0]];
+		glm::vec3 p1 = newObjData.vertices[face.vertexIndices[1]];
+		glm::vec3 p2 = newObjData.vertices[face.vertexIndices[2]];
+
+		glm::vec3 faceNormal = glm::normalize(glm::cross(p1 - p0, p2 - p0));
+
+		newObjData.normals[face.vertexIndices[0]] += faceNormal;
+		newObjData.normals[face.vertexIndices[1]] += faceNormal;
+		newObjData.normals[face.vertexIndices[2]] += faceNormal;
+	}
+
+	for (auto& n : newObjData.normals)
+	{
+		if (glm::length(n) > 0.0f)
+			n = glm::normalize(n);
+	}
+
+	if (!newObjData.vertices.empty() && !newObjData.faces.empty())
+	{
+		calculateTangents(newObjData);
+	}
+
+	return newObjData;
 }

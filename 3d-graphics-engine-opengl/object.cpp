@@ -1,5 +1,6 @@
 #include <iostream>
 #include "object.h"
+#include "lod.h"
 
 void Object::update()
 {
@@ -19,6 +20,20 @@ void Object::update()
 
 Object::Object(ObjData objData) : objData(objData), position(0.0f), rotation(0.0f), scale(1.0f)
 {
+    std::vector<float> reductionSteps = { 0.0f, 0.6f };
+	std::vector<float> screenSizeThresholds = { 0.2f };
+
+	SimObject simObject = createSimObject(objData);
+	for (size_t i = 0; i < reductionSteps.size(); ++i)
+	{
+		float reduction = reductionSteps[i];
+		std::cout << "Creating LOD level " << i << " with reduction: " << reduction << "\n";
+		SimObject simplifiedSimObject = simplifyObject(simObject, reduction);
+		ObjData simplifiedObjData = convertSimObjectToObjData(simplifiedSimObject, objData);
+		std::vector<Mesh> meshes = generateMeshesFromObject(simplifiedObjData);
+		float screenSizeThreshold = i == 0 ? 1.0f : screenSizeThresholds[i - 1];
+		lodMeshes.emplace_back(std::move(meshes), screenSizeThreshold);
+	}
 }
 
 void Mesh::createBuffers(std::vector<glm::vec3> vertices, std::vector<glm::vec3> uvs, std::vector<glm::vec3> normals, std::vector<glm::vec3> tangents, std::vector<glm::vec3> bitangents)
@@ -126,9 +141,9 @@ void Mesh::draw() const
 	glBindVertexArray(0);
 }
 
-void generateMeshesFromObject(Object& object)
+std::vector<Mesh> generateMeshesFromObject(ObjData objData)
 {
-    ObjData& objData = object.objData;
+    std::vector<Mesh> meshes;
     const std::vector<Material>& materials = objData.materials;
 
     size_t materialCount = std::max<size_t>(1, materials.size());
@@ -335,11 +350,16 @@ void generateMeshesFromObject(Object& object)
         std::cout << "Mesh aangemaakt met VAO id: "
             << mesh.VAO << "\n";
 
-        object.meshes.push_back(std::move(mesh));
+        meshes.push_back(std::move(mesh));
     }
 
     // VAO loskoppelen
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    return meshes;
 }
+
+LODMesh::LODMesh(std::vector<Mesh> meshes, float screenSizeThreshold) : meshes(std::move(meshes)), screenSizeThreshold(screenSizeThreshold)
+{}
