@@ -118,70 +118,90 @@ void rebuildConnectivity(SimObject& simObject)
 	}
 }
 
+void calculatePositionAndError(const SimObject& simObject, const std::vector<uint32_t>& vertices, std::priority_queue<SimEdge, std::vector<SimEdge>, decltype(&edgeComparator)>& edges)
+{
+	for (uint32_t v1 : vertices)
+	{
+		if (simObject.vertices[v1].deleted)
+			continue;
+
+		for (uint32_t v2 : simObject.vertices[v1].connectedVertices)
+		{
+			if (simObject.vertices[v2].deleted || v1 >= v2)
+				continue;
+
+			SimEdge edge{};
+			edge.v1 = v1;
+			edge.v2 = v2;
+			edge.version1 = simObject.vertices[v1].version;
+			edge.version2 = simObject.vertices[v2].version;
+			edge.error = std::numeric_limits<float>::max();
+
+			glm::mat4 q = simObject.vertices[v1].quadric + simObject.vertices[v2].quadric;
+
+			glm::mat3 A(q[0], q[1], q[2]);
+			glm::vec3 b(q[3]);
+
+			if (std::abs(glm::determinant(A)) > 1e-8f)
+			{
+				edge.optimalPosition = -(glm::inverse(A) * b);
+
+				glm::vec4 p(edge.optimalPosition, 1.0f);
+				edge.error = glm::dot(p, q * p);
+			}
+			else
+			{
+				for (int check = 0; check < 5; ++check)
+				{
+					glm::vec3 candidate = glm::mix(simObject.vertices[v1].position, simObject.vertices[v2].position, check / 4.0f);
+
+					glm::vec4 p(candidate, 1.0f);
+					float error = glm::dot(p, q * p);
+
+					if (error < edge.error)
+					{
+						edge.error = error;
+						edge.optimalPosition = candidate;
+					}
+				}
+			}
+
+			edges.emplace(edge);
+		}
+	}
+}
+
 SimObject simplifyObject(SimObject simObject, float targetReduction)
 {
 	if (targetReduction == 1E-8f)
 		return simObject;
 	size_t targetFaceCount = static_cast<size_t>(simObject.faces.size() * (1.0f - targetReduction));
 
+	std::priority_queue<SimEdge, std::vector<SimEdge>, decltype(&edgeComparator)> edges(edgeComparator);
+
+	std::vector<uint32_t> vertexIndices(simObject.vertices.size());
+	for (int i = 0; i < simObject.vertices.size(); ++i) vertexIndices[i] = i;
+	calculatePositionAndError(simObject, vertexIndices, edges);
+
 	while (simObject.faces.size() > targetFaceCount)
 	{
 		if (simObject.faces.size() % 100 < 5) std::cout << "Current face count: " << simObject.faces.size() << ", target: " << targetFaceCount << "\n";
-		rebuildConnectivity(simObject);
-
-		std::priority_queue<SimEdge, std::vector<SimEdge>, decltype(&edgeComparator)> edges(edgeComparator);
-		for (uint32_t i = 0; i < simObject.vertices.size(); ++i)
-		{
-			if (simObject.vertices[i].deleted)
-				continue;
-
-			for (uint32_t neighbor : simObject.vertices[i].connectedVertices)
-			{
-				if (simObject.vertices[neighbor].deleted || i >= neighbor)
-					continue;
-
-				SimEdge edge;
-				edge.v1 = i;
-				edge.v2 = neighbor;
-
-				glm::mat4 q = simObject.vertices[i].quadric + simObject.vertices[neighbor].quadric;
-
-				glm::mat3 A(q[0], q[1], q[2]);
-				glm::vec3 b(q[3]);
-
-				if (std::abs(glm::determinant(A)) > 1e-8f)
-				{
-					edge.optimalPosition = -(glm::inverse(A) * b);
-
-					glm::vec4 v(edge.optimalPosition, 1.0f);
-					edge.error = glm::dot(v, q * v);
-				}
-				else
-				{
-					for (int check = 0; check < 5; ++check)
-					{
-						glm::vec3 candidate = glm::mix(simObject.vertices[i].position, simObject.vertices[neighbor].position, (float)check / 4.0f);
-						float error = glm::dot(glm::vec4(candidate, 1.0f), q * glm::vec4(candidate, 1.0f));
-
-						if (error < edge.error)
-						{
-							edge.error = error;
-							edge.optimalPosition = candidate;
-						}
-					}
-				}
-
-				edges.emplace(edge);
-			}
-		}
 
 		if (edges.empty())
 			break;
 
 		SimEdge bestEdge = edges.top();
+		edges.pop();
 
 		SimVertex& v1 = simObject.vertices[bestEdge.v1];
 		SimVertex& v2 = simObject.vertices[bestEdge.v2];
+
+		if (v1.deleted || v2.deleted || v1.version != bestEdge.version1 || v2.version != bestEdge.version2)
+			continue;
+		
+		std::vector<uint32_t> affectedVertices;
+		affectedVertices.insert(affectedVertices.end(), v1.connectedVertices.begin(), v1.connectedVertices.end());
+		affectedVertices.insert(affectedVertices.end(), v2.connectedVertices.begin(), v2.connectedVertices.end());
 
 		v1.position = bestEdge.optimalPosition;
 		v1.quadric += v2.quadric;
@@ -201,7 +221,14 @@ SimObject simplifyObject(SimObject simObject, float targetReduction)
 				face.vertexIndices[1] == face.vertexIndices[2] ||
 				face.vertexIndices[2] == face.vertexIndices[0]; }), simObject.faces.end());
 
+		v1.version++;
 		v2.deleted = true;
+
+		rebuildConnectivity(simObject);
+		affectedVertices.push_back(bestEdge.v1);
+		std::sort(affectedVertices.begin(), affectedVertices.end());
+		affectedVertices.erase(std::unique(affectedVertices.begin(), affectedVertices.end()), affectedVertices.end());
+		calculatePositionAndError(simObject, affectedVertices, edges);
 	}
 
 	return simObject;

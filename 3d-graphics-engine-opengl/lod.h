@@ -7,6 +7,9 @@ struct SimEdge
 	uint32_t v1;
 	uint32_t v2;
 
+	uint32_t version1{ 0 };
+	uint32_t version2{ 0 };
+
 	glm::vec3 optimalPosition{ 0.0f };
 	float error{ FLT_MAX };
 };
@@ -20,6 +23,7 @@ struct SimVertex
 	std::vector<int> connectedVertices;
 
 	bool deleted{ false };
+	uint32_t version{ 0 };
 };
 
 struct SimObject
