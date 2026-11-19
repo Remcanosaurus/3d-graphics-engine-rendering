@@ -5,6 +5,7 @@
 
 SimObject createSimObject(const ObjData& objData)
 {
+	std::cout << "Creating SimObject from ObjData with " << objData.vertices.size() << " vertices and " << objData.faces.size() << " faces.\n";
 	SimObject simObject;
 	simObject.vertices.resize(objData.vertices.size());
 	for (size_t i = 0; i < objData.vertices.size(); ++i)
@@ -12,6 +13,8 @@ SimObject createSimObject(const ObjData& objData)
 		simObject.vertices[i].position = objData.vertices[i];
 		simObject.vertices[i].quadric = glm::mat4(0.0f);
 	}
+
+	std::cout << "Initialized " << simObject.vertices.size() << " SimVertices.\n";
 
 	simObject.faces = objData.faces;
 
@@ -31,6 +34,8 @@ SimObject createSimObject(const ObjData& objData)
 			simObject.vertices[current].connectedVertices.push_back(previous);
 		}
 	}
+
+	std::cout << "Calculated connectivity for " << simObject.vertices.size() << " vertices.\n";
 
 	for (SimVertex& vertex : simObject.vertices)
 	{
@@ -58,6 +63,8 @@ SimObject createSimObject(const ObjData& objData)
 			simObject.vertices[vertexIndex].quadric += kp;
 		}
 	}
+
+	std::cout << "Calculated quadrics for " << simObject.vertices.size() << " vertices.\n";
 
 	return simObject;
 }
@@ -113,11 +120,13 @@ void rebuildConnectivity(SimObject& simObject)
 
 SimObject simplifyObject(SimObject simObject, float targetReduction)
 {
+	if (targetReduction == 1E-8f)
+		return simObject;
 	size_t targetFaceCount = static_cast<size_t>(simObject.faces.size() * (1.0f - targetReduction));
 
 	while (simObject.faces.size() > targetFaceCount)
 	{
-		std::cout << "Current face count: " << simObject.faces.size() << ", target: " << targetFaceCount << "\n";
+		if (simObject.faces.size() % 100 < 5) std::cout << "Current face count: " << simObject.faces.size() << ", target: " << targetFaceCount << "\n";
 		rebuildConnectivity(simObject);
 
 		std::priority_queue<SimEdge, std::vector<SimEdge>, decltype(&edgeComparator)> edges(edgeComparator);
@@ -137,17 +146,14 @@ SimObject simplifyObject(SimObject simObject, float targetReduction)
 
 				glm::mat4 q = simObject.vertices[i].quadric + simObject.vertices[neighbor].quadric;
 
-				if (std::abs(glm::determinant(q)) > 1e-8f)
-				{
-					glm::mat4 A(
-						q[0][0], q[0][1], q[0][2], q[0][3],
-						q[0][1], q[1][1], q[1][2], q[1][3],
-						q[0][2], q[1][2], q[2][2], q[2][3],
-						0.0f, 0.0f, 0.0f, 1.0f
-					);
+				glm::mat3 A(q[0], q[1], q[2]);
+				glm::vec3 b(q[3]);
 
-					glm::vec4 v = glm::inverse(A) * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-					edge.optimalPosition = glm::vec3(v.x, v.y, v.z);
+				if (std::abs(glm::determinant(A)) > 1e-8f)
+				{
+					edge.optimalPosition = -(glm::inverse(A) * b);
+
+					glm::vec4 v(edge.optimalPosition, 1.0f);
 					edge.error = glm::dot(v, q * v);
 				}
 				else
@@ -196,7 +202,6 @@ SimObject simplifyObject(SimObject simObject, float targetReduction)
 				face.vertexIndices[2] == face.vertexIndices[0]; }), simObject.faces.end());
 
 		v2.deleted = true;
-		rebuildConnectivity(simObject);
 	}
 
 	return simObject;

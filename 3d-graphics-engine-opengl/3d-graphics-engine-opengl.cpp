@@ -118,7 +118,7 @@ int main(int argc, char* args[])
     std::string filePath; // Pad naar OBJ bestand uit command line argument halen
     if (argc > 1) filePath = args[1];
     else {
-        filePath = baseDir.string() + "/cube.obj";
+        filePath = baseDir.string() + "/utah_teapot.obj";
     }
 
     std::string fileName = std::filesystem::path(filePath).filename().string();
@@ -134,7 +134,6 @@ int main(int argc, char* args[])
         // Laad OBJ file
         ObjData objData = loadObjFile(filePath);
 		std::cout << "Aantal vertices: " << objData.vertices.size() << "\n";
-        calculateTangents(objData);
         for (int x = 0; x < 1; ++x)
 		{
 			for (int z = 0; z < 1; ++z)

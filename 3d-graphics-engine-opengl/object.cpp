@@ -20,7 +20,7 @@ void Object::update()
 
 Object::Object(ObjData objData) : objData(objData), position(0.0f), rotation(0.0f), scale(1.0f)
 {
-    std::vector<float> reductionSteps = { 0.0f, 0.6f };
+    std::vector<float> reductionSteps = { 0.0f, 0.3f };
 	std::vector<float> screenSizeThresholds = { 0.2f };
 
 	SimObject simObject = createSimObject(objData);
@@ -30,6 +30,7 @@ Object::Object(ObjData objData) : objData(objData), position(0.0f), rotation(0.0
 		std::cout << "Creating LOD level " << i << " with reduction: " << reduction << "\n";
 		SimObject simplifiedSimObject = simplifyObject(simObject, reduction);
 		ObjData simplifiedObjData = convertSimObjectToObjData(simplifiedSimObject, objData);
+		std::cout << "Generating meshes for LOD level " << i << " with " << simplifiedObjData.vertices.size() << " vertices and " << simplifiedObjData.faces.size() << " faces.\n";
 		std::vector<Mesh> meshes = generateMeshesFromObject(simplifiedObjData);
 		float screenSizeThreshold = i == 0 ? 1.0f : screenSizeThresholds[i - 1];
 		lodMeshes.emplace_back(std::move(meshes), screenSizeThreshold);
