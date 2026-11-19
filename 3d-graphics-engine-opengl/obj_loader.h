@@ -59,6 +59,38 @@ struct ObjData
 	std::vector<Material> materials;
 };
 
+struct TangentKey
+{
+	int vertex;
+	int normal;
+	int uv;
+
+	bool operator==(const TangentKey& other) const
+	{
+		return vertex == other.vertex &&
+			normal == other.normal &&
+			uv == other.uv;
+	}
+};
+
+struct TangentKeyHash
+{
+	std::size_t operator()(const TangentKey& key) const
+	{
+		std::size_t h1 = std::hash<int>{}(key.vertex);
+		std::size_t h2 = std::hash<int>{}(key.normal);
+		std::size_t h3 = std::hash<int>{}(key.uv);
+
+		return h1 ^ (h2 << 1) ^ (h3 << 2);
+	}
+};
+
+struct TangentAccumulation
+{
+	glm::vec3 tangent{ 0.0f };
+	glm::vec3 bitangent{ 0.0f };
+};
+
 Texture loadTexture(const std::string& filename);
 
 void loadMtlFile(const std::string& filename, std::vector<Material>& materials);

@@ -5,13 +5,15 @@
 #include <glm.hpp>
 
 #include "obj_loader.h"
+#include <iostream>
 
 void calculateTangents(ObjData& objData)
 {
-	for (int i = 0; i < objData.faces.size(); ++i)
-	{
-		ObjFace& face = objData.faces[i];
+	std::unordered_map<TangentKey, TangentAccumulation, TangentKeyHash> tangentMap;
+	tangentMap.reserve(objData.faces.size() * 3);
 
+	for (ObjFace& face : objData.faces)
+	{
 		glm::vec3 v0 = objData.vertices[face.vertexIndices[0]];
 		glm::vec3 v1 = objData.vertices[face.vertexIndices[1]];
 		glm::vec3 v2 = objData.vertices[face.vertexIndices[2]];
@@ -31,47 +33,55 @@ void calculateTangents(ObjData& objData)
 			continue;
 
 		float invDet = 1.0f / determinant;
+
 		glm::vec3 tangent = (edge1 * deltaUV2.y - edge2 * deltaUV1.y) * invDet;
+
 		glm::vec3 bitangent = (edge2 * deltaUV1.x - edge1 * deltaUV2.x) * invDet;
 
-		for (int faceIndex = 0; faceIndex < objData.faces.size(); ++faceIndex)
+		for (int j = 0; j < 3; ++j)
 		{
-			ObjFace& faceToCheck = objData.faces[faceIndex];
-			for (int vertexIndexIndex = 0; vertexIndexIndex < 3; ++vertexIndexIndex)
-			{
-				for (int indexToCheck = 0; indexToCheck < 3; ++indexToCheck)
-				{
-					if (face.vertexIndices[vertexIndexIndex] == faceToCheck.vertexIndices[indexToCheck] &&
-						face.normalIndices[vertexIndexIndex] == faceToCheck.normalIndices[indexToCheck] &&
-						face.textureCoordIndices[vertexIndexIndex] == faceToCheck.textureCoordIndices[indexToCheck])
-					{
-						faceToCheck.tangents[indexToCheck] += tangent;
-						faceToCheck.bitangents[indexToCheck] += bitangent;
-					}
-				}
-			}
+			TangentKey key{
+				face.vertexIndices[j],
+				face.normalIndices[j],
+				face.textureCoordIndices[j]
+			};
+
+			tangentMap[key].tangent += tangent;
+			tangentMap[key].bitangent += bitangent;
 		}
 	}
 
-	for (int i = 0; i < objData.faces.size(); ++i)
+	for (ObjFace& face : objData.faces)
 	{
-		ObjFace& face = objData.faces[i];
 		for (int j = 0; j < 3; ++j)
 		{
-			glm::vec3 N = glm::normalize(objData.normals[face.normalIndices[j]]);
+			TangentKey key{
+				face.vertexIndices[j],
+				face.normalIndices[j],
+				face.textureCoordIndices[j]
+			};
 
-			face.tangents[j] -= N * glm::dot(N, face.tangents[j]);
+			const TangentAccumulation& accumulated = tangentMap[key];
 
-			float tangentLength = glm::length(face.tangents[j]);
+			glm::vec3 N = glm::normalize(
+				objData.normals[face.normalIndices[j]]
+			);
+
+			glm::vec3 T = accumulated.tangent;
+			T -= N * glm::dot(N, T);
+
+			float tangentLength = glm::length(T);
 
 			if (tangentLength > 0.000001f)
-				face.tangents[j] /= tangentLength;
+				T /= tangentLength;
+			else
+				T = glm::vec3(0.0f);
 
-			glm::vec3 B = glm::cross(N, face.tangents[j]);
-
-			if (glm::dot(B, face.bitangents[j]) < 0.0f)
+			glm::vec3 B = glm::cross(N, T);
+			if (glm::dot(B, accumulated.bitangent) < 0.0f)
 				B = -B;
 
+			face.tangents[j] = T;
 			face.bitangents[j] = B;
 		}
 	}
