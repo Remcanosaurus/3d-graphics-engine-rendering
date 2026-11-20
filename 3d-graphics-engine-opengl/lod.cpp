@@ -5,7 +5,6 @@
 
 SimObject createSimObject(const ObjData& objData)
 {
-	std::cout << "Creating SimObject from ObjData with " << objData.vertices.size() << " vertices and " << objData.faces.size() << " faces.\n";
 	SimObject simObject;
 	simObject.vertices.resize(objData.vertices.size());
 	for (size_t i = 0; i < objData.vertices.size(); ++i)
@@ -13,8 +12,6 @@ SimObject createSimObject(const ObjData& objData)
 		simObject.vertices[i].position = objData.vertices[i];
 		simObject.vertices[i].quadric = glm::mat4(0.0f);
 	}
-
-	std::cout << "Initialized " << simObject.vertices.size() << " SimVertices.\n";
 
 	simObject.faces = objData.faces;
 
@@ -34,8 +31,6 @@ SimObject createSimObject(const ObjData& objData)
 			simObject.vertices[current].connectedVertices.push_back(previous);
 		}
 	}
-
-	std::cout << "Calculated connectivity for " << simObject.vertices.size() << " vertices.\n";
 
 	for (SimVertex& vertex : simObject.vertices)
 	{
@@ -63,8 +58,6 @@ SimObject createSimObject(const ObjData& objData)
 			simObject.vertices[vertexIndex].quadric += kp;
 		}
 	}
-
-	std::cout << "Calculated quadrics for " << simObject.vertices.size() << " vertices.\n";
 
 	return simObject;
 }
@@ -238,6 +231,7 @@ ObjData convertSimObjectToObjData(const SimObject& simObj, const ObjData& origin
 {
 	ObjData newObjData;
 	newObjData.materials = originalTemplate.materials;
+	newObjData.textureCoords = originalTemplate.textureCoords;
 
 	std::vector<int> oldToNew(simObj.vertices.size(), -1);
 	int newIndex = 0;
@@ -250,14 +244,23 @@ ObjData convertSimObjectToObjData(const SimObject& simObj, const ObjData& origin
 			newObjData.vertices.push_back(simObj.vertices[i].position);
 		}
 	}
-	newObjData.textureCoords = originalTemplate.textureCoords;
 	newObjData.normals.resize(newObjData.vertices.size(), glm::vec3(0.0f));
 
 	for (const auto& face : simObj.faces)
 	{
-		int v0 = oldToNew[face.vertexIndices[0]];
-		int v1 = oldToNew[face.vertexIndices[1]];
-		int v2 = oldToNew[face.vertexIndices[2]];
+		if (face.vertexIndices.size() < 3)
+			continue;
+
+		const int sourceV0 = face.vertexIndices[0];
+		const int sourceV1 = face.vertexIndices[1];
+		const int sourceV2 = face.vertexIndices[2];
+
+		if (sourceV0 < 0 || sourceV1 < 0 || sourceV2 < 0 || sourceV0 >= static_cast<int>(oldToNew.size()) || sourceV1 >= static_cast<int>(oldToNew.size()) || sourceV2 >= static_cast<int>(oldToNew.size()))
+			continue;
+
+		int v0 = oldToNew[sourceV0];
+		int v1 = oldToNew[sourceV1];
+		int v2 = oldToNew[sourceV2];
 
 		if (v0 == -1 || v1 == -1 || v2 == -1 || v0 == v1 || v1 == v2 || v2 == v0)
 			continue;
@@ -267,10 +270,23 @@ ObjData convertSimObjectToObjData(const SimObject& simObj, const ObjData& origin
 		newFace.vertexIndices = { v0, v1, v2 };
 		newFace.materialIndex = face.materialIndex;
 
-		if (!originalTemplate.textureCoords.empty() && !face.textureCoordIndices.empty() && face.textureCoordIndices.size() >= 3)
+		bool validTextureCoordinates = face.textureCoordIndices.size() >= 3;
+		if (validTextureCoordinates)
 		{
-			newFace.textureCoordIndices = {face.textureCoordIndices[0], face.textureCoordIndices[1], face.textureCoordIndices[2]};
+			for (size_t i = 0; i < 3; ++i)
+			{
+				int textureCoordinateIndex = face.textureCoordIndices[i];
+				if (textureCoordinateIndex < 0 || textureCoordinateIndex >= static_cast<int>(newObjData.textureCoords.size()))
+				{
+					validTextureCoordinates = false;
+					break;
+				}
+			}
 		}
+
+		if (validTextureCoordinates)
+			newFace.textureCoordIndices = {face.textureCoordIndices[0], face.textureCoordIndices[1], face.textureCoordIndices[2]};
+
 		newFace.normalIndices = { v0, v1, v2 };
 
 		newObjData.faces.push_back(newFace);
@@ -282,7 +298,9 @@ ObjData convertSimObjectToObjData(const SimObject& simObj, const ObjData& origin
 		glm::vec3 p1 = newObjData.vertices[face.vertexIndices[1]];
 		glm::vec3 p2 = newObjData.vertices[face.vertexIndices[2]];
 
-		glm::vec3 faceNormal = glm::normalize(glm::cross(p1 - p0, p2 - p0));
+		glm::vec3 faceNormal = glm::cross(p1 - p0, p2 - p0);
+		if (glm::dot(faceNormal, faceNormal) <= 1E-12f)
+			continue;
 
 		newObjData.normals[face.vertexIndices[0]] += faceNormal;
 		newObjData.normals[face.vertexIndices[1]] += faceNormal;
@@ -295,7 +313,17 @@ ObjData convertSimObjectToObjData(const SimObject& simObj, const ObjData& origin
 			n = glm::normalize(n);
 	}
 
-	if (!newObjData.vertices.empty() && !newObjData.faces.empty())
+	bool canCalculateTangents = !newObjData.vertices.empty() && !newObjData.faces.empty();
+	for (const auto& face : newObjData.faces)
+	{
+		if (face.textureCoordIndices.size() < 3 || face.normalIndices.size() < 3)
+		{
+			canCalculateTangents = false;
+			break;
+		}
+	}
+
+	if (canCalculateTangents)
 	{
 		calculateTangents(newObjData);
 	}
